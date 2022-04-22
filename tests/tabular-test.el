@@ -61,18 +61,6 @@
     (should (equal (tabular--split-delim "ab     c"  delimiter)  '("ab"  "  "  "  "  " c")))
     (should (equal (tabular--split-delim "ab    c"  delimiter)  '("ab"  "  "  "  "  "c")))))
 
-(ert-deftest test-strip-trailing-spaces ()
-  (should (equal (tabular--strip-trailing-spaces "pizza ") "pizza"))
-  (should (equal (tabular--strip-trailing-spaces "pizza") "pizza"))
-  (should (equal (tabular--strip-trailing-spaces "  pizza") "  pizza"))
-  (should (equal (tabular--strip-trailing-spaces "") "")))
-
-(ert-deftest test-strip-leading-spaces ()
-  (should (equal (tabular--strip-leading-spaces "  pizza") "pizza"))
-  (should (equal (tabular--strip-leading-spaces "pizza") "pizza"))
-  (should (equal (tabular--strip-leading-spaces "pizza  ") "pizza  "))
-  (should (equal (tabular--strip-leading-spaces "") "")))
-
 (ert-deftest test-split-delim-trailing-comments ()
   (let ((delimiter  (rx "//")))
     (should (equal (tabular--split-delim "x//foo"   delimiter)  '("x"  "//"  "foo"))))

@@ -70,14 +70,6 @@ This does not trim leading and trailing spaces."
          (left  (ceiling (/ spaces 2.0))))
     (concat (make-string left ? ) string (make-string right ? ))))
 
-(defun tabular--strip-trailing-spaces  (string)
-  "Remove all trailing spaces from a string."
-  (string-trim-right string))
-
-(defun tabular--strip-leading-spaces  (string)
-  "Remove all leading spaces from a string."
-  (string-trim-left string))
-
 ;; thanks to https://emacs.stackexchange.com/questions/5729/split-a-string-without-consuming-separators
 (defun tabular--split-string-keep-sep (string &optional separators omit-nulls keep-sep)
   "Split STRING into substrings bounded by matches for SEPARATORS."
