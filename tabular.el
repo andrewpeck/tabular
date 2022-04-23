@@ -1,10 +1,13 @@
 ;; -*- lexical-binding: t; -*-
-;; Tabular:     Align columnar data using regex-designated column boundaries
-;; Maintainer:  Matthew Wozniski (godlygeek@gmail.com)
-;; Date:        Thu, 03 May 2012 20:49:32 -0400
-;; Version:     1.0
 ;;
-;; Long Description:
+;; Tabular:          Align columnar data using regex-designated column boundaries
+;; Author:           Andrew Peck (andrew.peck@cern.ch)
+;; Package-Requires: ((emacs "24.4"))
+;;
+;; This file is not part of GNU Emacs.
+;;
+;;; Commentary:
+;;;
 ;; Sometimes, it's useful to line up text.  Naturally, it's nicer to have the
 ;; computer do this for you, since aligning things by hand quickly becomes
 ;; unpleasant.  While there are other plugins for aligning text, the ones I've
@@ -13,10 +16,8 @@
 ;; and the hard things possible, without providing an unnecessarily obtuse
 ;; interface.  It's still a work in progress, and criticisms are welcome.
 ;;
-;; License:
-;; Copyright (c) 2012, Matthew J. Wozniski
-;;
-;;  Ported to emacs in 2022, Andrew Peck
+;; License:    Copyright (c) 2012, Matthew J. Wozniski
+;;             Ported to emacs in 2022, Andrew Peck
 ;;
 ;; All rights reserved.
 ;;
@@ -41,11 +42,12 @@
 ;; LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 ;; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 ;; EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-(require 'dash)
+;;
+;;; Code:
 
 ;;  dash used for -zip-lists
 ;;  look for an alternative way to do this
+(require 'dash)
 
 (defun tabular--strlen (string)
   ;; Return the number of bytes in a string after expanding tabs to spaces. This
@@ -108,8 +110,7 @@ This does not trim leading and trailing spaces."
 (defun tabular--split-delim (string delim)
   "Split a string into fields and delimiters. Like split(), but
 include the delimiters as elements"
-  (tabular--split-string-keep-sep string delim t t)
-  )
+  (tabular--split-string-keep-sep string delim t t))
 
 (defun tabular--set-lines (start len strings)
   "Replace lines from START to START + LEN - 1 with the given STRINGS.
@@ -156,7 +157,7 @@ expression is assumed to have modified LINES itself."
   "Convert a FORMATSTR into a nested list of format specifications, e.g.
 r1c1l0 -> '((r 1) (c 1) (l 0))"
   (-zip-lists
-   (mapcar #'intern (split-string formatstr "[0-9]+" t))
+   (split-string formatstr "[0-9]+" t)
    (mapcar #'string-to-number (split-string formatstr "[lrc]" t))))
 
 (defun tabular--split-string-list (string-list delimiter)
@@ -165,10 +166,10 @@ r1c1l0 -> '((r 1) (c 1) (l 0))"
   ;; TODO
   string-list)
 
-  ;; let s:do_gtabularize = (get(a:options, 'mode', '') ==# 'GTabularize')
+;; let s:do_gtabularize = (get(a:options, 'mode', '') ==# 'GTabularize')
 (setq do_tabularize nil)
 
-(defun tabular--strip-line (line &rest gtabularize)
+(defun tabular--strip-line (line &optional gtabularize)
   "Strip spaces out of a LINE, which is a list of strings split by the delimeter
 offset
 
@@ -215,7 +216,37 @@ indenting."
   ;;     endfor
   ;;   endfor
 
- )
+  )
+
+(defun tabular--concatenate-line (line maxes format &optional lead-blank gtabularize)
+  "Concatenate the fields, according to the format pattern."
+
+  ;; GTabularize doesn't change non-matching lines
+  (when (not (and gtabularize (= 1 (length line)) line))
+
+    (setq i 0)
+    (while (< i (length line))
+
+      ;; (debug)
+      (let ((how (car (nth (mod i (length format)) format))) ;;       let how = format[i % len(format)][0]
+            (pad (cadr (nth (mod i (length format)) format))) ;;       let pad = format[i % len(format)][1:-1]
+            (field nil))
+
+        (print how)
+        (print pad)
+
+
+        (setq field
+              (cond
+               ((string= how "l") (tabular--left-align (nth i line) (nth i maxes)))
+               ((string= how "r") (tabular--right-align (nth i line) (nth i maxes)))
+               ((string= how "c") (tabular--center-align (nth i line) (nth i maxes)))))
+
+        (setf (nth i line)
+              (concat field
+                      (if (and (= i 0) lead-blank) ""
+                        (make-string pad ? ))))
+        (setq i (+ 1 i))))) line)
 
 (defun tabular--tabularize-strings (strings delim &optional formatstr gtabularize)
   "Given a list of strings and a delimiter, split each string on
@@ -240,43 +271,23 @@ guarantee that the nth delimiter of each string is aligned."
 
   ;; strip spaces
   (setq lines (mapcar
-               (lambda (line) (tabular--strip-line line gtabularize))
+               (lambda (line)
+                 (tabular--strip-line line gtabularize))
                lines))
 
   ;; Find the max length of each field
   (setq maxes (mapcar #'tabular--get-max-length lines))
 
+
   ;; let lead_blank = empty(filter(copy(lines), 'v:val[0] =~ "\\S"'))
 
-  ;;------------------------------------------------------------------------------
-  ;; Concatenate the fields, according to the format pattern.
-  ;;------------------------------------------------------------------------------
+  ;; Realign lines
+  (setq lines (mapcar
+               (lambda (line)
+                 (tabular--concatenate-line line maxes format lead-blank gtabularize))))
 
-  ;;   for idx in range(len(lines))
-  ;;     let line = lines[idx]
-
-  ;;     if len(line) == 1 && s:do_gtabularize
-  ;;       let lines[idx] = line[0] " GTabularize doesn't change non-matching lines
-  ;;       continue
-  ;;     endif
-
-  ;;     for i in range(len(line))
-  ;;       let how = format[i % len(format)][0]
-  ;;       let pad = format[i % len(format)][1:-1]
-
-  ;;       if how =~? 'l'
-  ;;         let field = s:Left(line[i], maxes[i])
-  ;;       elseif how =~? 'r'
-  ;;         let field = s:Right(line[i], maxes[i])
-  ;;       elseif how =~? 'c'
-  ;;         let field = s:Center(line[i], maxes[i])
-  ;;       endif
-
-  ;;       let line[i] = field . (lead_blank && i == 0 ? '' : repeat(" ", pad))
-  ;;     endfor
-
-  ;;     let lines[idx] = s:StripTrailingSpaces(join(line, ''))
-  ;;   endfor
+  ;;  Strip trailing spaces
+  (setq lines (mapcar #'string-trim-right lines))
 
   )
 

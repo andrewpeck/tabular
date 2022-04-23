@@ -20,11 +20,11 @@
            (tabular--strip-line '("   a  " "   =   " "   b   ")))))
 
 (ert-deftest test-parse-formatstr ()
-  (should (equal (tabular--parse-formatstr "r1c1l0") '((r 1) (c 1) (l 0))))
-  (should (equal (tabular--parse-formatstr "l0") '((l 0))))
-  (should (equal (tabular--parse-formatstr "l10") '((l 10))))
-  (should (equal (tabular--parse-formatstr "r2") '((r 2))))
-  (should (equal (tabular--parse-formatstr "c1") '((c 1)))))
+  (should (equal (tabular--parse-formatstr "r1c1l0") '(("r" 1) ("c" 1) ("l" 0))))
+  (should (equal (tabular--parse-formatstr "l0") '(("l" 0))))
+  (should (equal (tabular--parse-formatstr "l10") '(("l" 10))))
+  (should (equal (tabular--parse-formatstr "r2") '(("r" 2))))
+  (should (equal (tabular--parse-formatstr "c1") '(("c" 1)))))
 
 (ert-deftest test-elempat ()
   (should (equal nil (tabular--validate-formatstr "l-1")))
@@ -100,3 +100,41 @@
 (ert-deftest test-split-delim-ternary ()
   (let ((delimiter  "?\\|:"))
     (should (equal (tabular--split-delim "a?b:c"    delimiter)  '("a"  "?"  "b"  ":"  "c")))))
+
+(ert-deftest test-get-max-length ()
+  t
+  )
+
+(ert-deftest test-tabularize-strings ()
+  t
+  )
+
+(ert-deftest test-concatenate-line ()
+
+  ;;  zero padding  l/r/c
+  (should (equal (tabular--concatenate-line
+                  '("a" "=" "b") '(5 1 5) '(("l" 0)))
+                 '("a    " "=" "b    ")))
+
+  (should (equal (tabular--concatenate-line
+                  '("a" "=" "b") '(5 1 5) '(("r" 0)))
+                 '("    a" "=" "    b")))
+
+  (should (equal (tabular--concatenate-line
+                  '("a" "=" "b") '(5 1 5) '(("c" 0)))
+                 '("  a  " "=" "  b  ")))
+
+  ;;  non-zero padding  l/r/c
+  ;; (should (equal (tabular--concatenate-line
+  ;;                 '("a" "=" "b") '(5 1 5) '(("l" 3)))
+  ;;                '("a    " "=   " "b    ")))
+
+  ;; (should (equal (tabular--concatenate-line
+  ;;                 '("a" "=" "b") '(5 1 5) '(("r" 3)))
+  ;;                '("    a" "   =" "    b")))
+
+  ;; (should (equal (tabular--concatenate-line
+  ;;                 '("a" "=" "b") '(5 1 5) '(("c" 3)))
+  ;;                '("  a  " " =" "  b  ")))
+
+  )
