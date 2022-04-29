@@ -1,31 +1,59 @@
-EMACS ?= emacs
-EMACS_VERSION=$(shell $(EMACS) -batch -eval '(princ (format "%s.%s" emacs-major-version emacs-minor-version))')
-EMACS_BATCH=$(EMACS) --batch -Q
-TABULAR_ELC=tabular.$(EMACS_VERSION).elc
+# * makem.sh/Makefile --- Script to aid building and testing Emacs Lisp packages
 
-.PHONY: test-compiled test-uncompiled compile
+# URL: https://github.com/alphapapa/makem.sh
+# Version: 0.5
 
-# dist:
-# 	cask package
-#
-test:
-	sh test.sh
+# * Arguments
 
-compile:
-	$(EMACS_BATCH) -l dash -f batch-byte-compile tabular.el && mv tabular.elc $(TABULAR_ELC)
+# For consistency, we use only var=val options, not hyphen-prefixed options.
 
-$(TABULAR_ELC): tabular.el
-	make compile
+# NOTE: I don't like duplicating the arguments here and in makem.sh,
+# but I haven't been able to find a way to pass arguments which
+# conflict with Make's own arguments through Make to the script.
+# Using -- doesn't seem to do it.
 
-#emacs -batch -l ert -l tests/tabular-test.el -f ert-run-tests-batch-and-exit
+ifdef install-deps
+	INSTALL_DEPS = "--install-deps"
+endif
+ifdef install-linters
+	INSTALL_LINTERS = "--install-linters"
+endif
 
-# test-uncompiled:
-# 	cask exec ert-runner -l tabular.el
+ifdef sandbox
+	ifeq ($(sandbox), t)
+		SANDBOX = --sandbox
+	else
+		SANDBOX = --sandbox=$(sandbox)
+	endif
+endif
 
-# test-compiled: $(TABULAR_ELC)
-# 	cask exec ert-runner -l $(TABULAR_ELC)
+ifdef debug
+	DEBUG = "--debug"
+endif
 
-# test: test-uncompiled test-compiled
+# ** Verbosity
 
-# tryout:
-# 	cask exec $(EMACS) -Q -L . -l init-tryout.el test-arx.el
+# Since the "-v" in "make -v" gets intercepted by Make itself, we have
+# to use a variable.
+
+verbose = $(v)
+
+ifneq (,$(findstring vvv,$(verbose)))
+	VERBOSE = "-vvv"
+else ifneq (,$(findstring vv,$(verbose)))
+	VERBOSE = "-vv"
+else ifneq (,$(findstring v,$(verbose)))
+	VERBOSE = "-v"
+endif
+
+# * Rules
+
+# TODO: Handle cases in which "test" or "tests" are called and a
+# directory by that name exists, which can confuse Make.
+
+%:
+	@./makem.sh $(DEBUG) $(VERBOSE) $(SANDBOX) $(INSTALL_DEPS) $(INSTALL_LINTERS) $(@)
+
+.DEFAULT: init
+init:
+	@./makem.sh $(DEBUG) $(VERBOSE) $(SANDBOX) $(INSTALL_DEPS) $(INSTALL_LINTERS)
