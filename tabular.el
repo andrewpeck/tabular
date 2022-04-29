@@ -190,12 +190,12 @@ indenting."
     ;; length 2 line is just 1st element + delimiter, so skip the 2nd element
     ;; for 3rd element and beyond strip leading and trailing spaces from other elements
     (when (>= 3 (length line))
-      (setq i 2)
-      (while (< i (length line))
-        (setf (nth i line)
-              (string-trim-left
-               (string-trim-right (nth i line))))
-        (setq i (+ 1 i)))))
+      (let ((i 2))
+        (while (< i (length line))
+          (setf (nth i line)
+                (string-trim-left
+                 (string-trim-right (nth i line))))
+          (setq i (+ 1 i))))))
   line)
 
 (defun tabular--get-max-length (line &rest gtabularize)
@@ -224,29 +224,29 @@ indenting."
   ;; GTabularize doesn't change non-matching lines
   (when (not (and gtabularize (= 1 (length line)) line))
 
-    (setq i 0)
-    (while (< i (length line))
+    (let ((i 0))
+      (while (< i (length line))
 
-      ;; (debug)
-      (let ((how (car (nth (mod i (length format)) format))) ;;       let how = format[i % len(format)][0]
-            (pad (cadr (nth (mod i (length format)) format))) ;;       let pad = format[i % len(format)][1:-1]
-            (field nil))
+        ;; (debug)
+        (let ((how (car (nth (mod i (length format)) format))) ;;       let how = format[i % len(format)][0]
+              (pad (cadr (nth (mod i (length format)) format))) ;;       let pad = format[i % len(format)][1:-1]
+              (field nil))
 
-        (print how)
-        (print pad)
+          (print how)
+          (print pad)
 
 
-        (setq field
-              (cond
-               ((string= how "l") (tabular--left-align (nth i line) (nth i maxes)))
-               ((string= how "r") (tabular--right-align (nth i line) (nth i maxes)))
-               ((string= how "c") (tabular--center-align (nth i line) (nth i maxes)))))
+          (setq field
+                (cond
+                 ((string= how "l") (tabular--left-align (nth i line) (nth i maxes)))
+                 ((string= how "r") (tabular--right-align (nth i line) (nth i maxes)))
+                 ((string= how "c") (tabular--center-align (nth i line) (nth i maxes)))))
 
-        (setf (nth i line)
-              (concat field
-                      (if (and (= i 0) lead-blank) ""
-                        (make-string pad ? ))))
-        (setq i (+ 1 i))))) line)
+          (setf (nth i line)
+                (concat field
+                        (if (and (= i 0) lead-blank) ""
+                          (make-string pad ? ))))
+          (setq i (+ 1 i)))))) line)
 
 (defun tabular--tabularize-strings (strings delim &optional formatstr gtabularize)
   "Given a list of strings and a delimiter, split each string on
@@ -287,9 +287,7 @@ guarantee that the nth delimiter of each string is aligned."
                  (tabular--concatenate-line line maxes format lead-blank gtabularize))))
 
   ;;  Strip trailing spaces
-  (setq lines (mapcar #'string-trim-right lines))
-
-  )
+  (setq lines (mapcar #'string-trim-right lines)))
 
 (defun tabular--piperange (includepat &optional filterlist)
   "Apply 0 or more filters, in sequence, to selected text in the buffer
