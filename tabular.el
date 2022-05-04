@@ -118,7 +118,8 @@ If more lines are needed to show all strings, they will be added.
 If there are too few strings to fill all lines, lines will be
 removed."
   (save-excursion
-    (goto-line start)
+    (goto-char (point-min))
+    (forward-line start)
     (kill-line len)
     (dolist (string strings)
       (insert (concat  string "\n")))))
@@ -284,12 +285,12 @@ guarantee that the nth delimiter of each string is aligned."
   ;; Realign lines
   (setq lines (mapcar
                (lambda (line)
-                 (tabular--concatenate-line line maxes format lead-blank gtabularize))))
+                 (tabular--concatenate-line line maxes format lead-blank gtabularize)) lines))
 
   ;;  Strip trailing spaces
   (setq lines (mapcar #'string-trim-right lines)))
 
-(defun tabular--piperange (includepat &optional filterlist)
+(defun tabular--piperange (start end includepat &optional filterlist)
   "Apply 0 or more filters, in sequence, to selected text in the buffer
 
 The lines to be filtered are determined as follows:
@@ -309,15 +310,14 @@ The lines to be filtered are determined as follows:
 The remaining arguments must each be a filter to apply to the text.
 Each filter must either be a String evaluating to a function to be called."
 
-
   ;; function! tabular#PipeRange(includepat, ...) range
   ;;   exe a:firstline . ',' . a:lastline
   ;;       \ . 'call tabular#PipeRangeWithOptions(a:includepat, a:000, {})'
   ;; endfunction
 
-  (tabular--piperange-with-options includepat filterlist nil))
+  (tabular--piperange-with-options start end includepat filterlist nil))
 
-(defun tabular--piperange-with-options (includepat filterlist options)
+(defun tabular--piperange-with-options (start end includepat filterlist options)
   "Extended version of tabular#PipeRange, which
 
 1) Takes the list of filters as an explicit list rather than as
@@ -331,42 +331,51 @@ whether to behave as :Tabularize or as :GTabularize This allows
 me to add new features here without breaking API compatibility in
 the future."
 
-  ;; function! tabular#PipeRangeWithOptions(includepat, filterlist, options) range
-  ;;   let top = a:firstline
-  ;;   let bot = a:lastline
+  (let ((top (line-number-at-pos start))
+        (bot (line-number-at-pos end))
+        ;;   let s:do_gtabularize = (get(a:options, 'mode', '') ==# 'GTabularize')
+        ;; (do-gtabularize ())
+        )
 
-  ;;   let s:do_gtabularize = (get(a:options, 'mode', '') ==# 'GTabularize')
+    ;; In the default mode, apply range extension logic
+    (when do-gtabularize
+      (when (and  (not (string-empty-p includepat)) (= top bot))
 
-  ;;   if !s:do_gtabularize
-  ;;     " In the default mode, apply range extension logic
-  ;;     if a:includepat != '' && top == bot
-  ;;       if top < 0 || top > line('$') || getline(top) !~ a:includepat
-  ;;         return
-  ;;       endif
-  ;;       while top > 1 && getline(top-1) =~ a:includepat
-  ;;         let top -= 1
-  ;;       endwhile
-  ;;       while bot < line('$') && getline(bot+1) =~ a:includepat
-  ;;         let bot += 1
-  ;;       endwhile
-  ;;     endif
-  ;;   endif
+        ;; !~ == regexp doesn't match
+        ;; if top < 0 || top > line('$') || getline(top) !~ a:includepat
+        ;;   return
+        ;; endif
 
-  ;;   let lines = map(range(top, bot), 'getline(v:val)')
+        ;; find the topmost contiguous line matching the includepat
+        (goto-char start)
+        (while (and  (forward-line -1)
+                     (string-match includepat
+                                   (buffer-substring-no-properties
+                                    (line-beginning-position)
+                                    (line-end-position))))
+          (setq top (line-number-at-pos)))
 
-  ;;   for filter in a:filterlist
-  ;;     if type(filter) != type("")
-  ;;       echoerr "PipeRange: Bad filter: " . string(filter)
-  ;;     endif
+        ;; find the bottommost contiguous line matching the includepat
+        (goto-char end)
+        (while (and  (forward-line 1)
+                     (string-match includepat
+                                   (buffer-substring-no-properties
+                                    (line-beginning-position)
+                                    (line-end-position))))
+          (setq bot (line-number-at-pos)))))
 
-  ;;     call s:FilterString(lines, filter)
+    (let ((lines (buffer-substring-no-properties top bot)))
 
-  ;;     unlet filter
-  ;;   endfor
+      (dolist (filter filterlist)
 
-  ;;   call s:SetLines(top, bot - top + 1, lines)
-  ;; endfunction
-  )
+        ;;   for filter in a:filterlist
+        ;;     if type(filter) != type("")
+        ;;       echoerr "PipeRange: Bad filter: " . string(filter)
+        ;;     endif
+
+        (setq lines  (tabular--filter-string lines filter)))
+
+      (tabular--set-lines top (+ 1 (- bot top)) lines))))
 
 ;; " Part of the public interface so interested pipelines can query this and
 ;; " adjust their behavior appropriately.
